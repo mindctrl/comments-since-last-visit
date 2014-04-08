@@ -3,7 +3,7 @@
  * Plugin Name: Comments Since Last Visit
  * Description: Highlights new comments made on a post since a person's last visit.
  * Plugin URI: http://www.johnparris.com/wordpress-plugins/comments-since-last-visit/
- * Version:     1.0
+ * Version:     1.0.2
  * Author:      John Parris
  * Author URI:  http://www.johnparris.com/
  * License:     GPL
@@ -82,10 +82,11 @@ class WP_CSLV
 		$this->plugin_path = plugin_dir_path( __FILE__ );
 		$this->load_language( 'wp-cslv' );
 
-		// more stuff: register actions and filters
-		add_action( 'wp_head',            array( $this, 'cookie' ) );
+		// Register actions and filters
+		add_action( 'get_header',         array( $this, 'cookie' ) );
 		add_filter( 'comment_class',      array( $this, 'comment_class' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'styles' ) );
+		add_filter( 'http_request_args',  array( $this, 'prevent_public_updates' ), 5, 2 );
 	}
 
 
@@ -154,9 +155,9 @@ class WP_CSLV
 			$latest_visit[$id] = $current_time;
 			setcookie( 'last_visit', json_encode( $latest_visit ), time()+3600*2160 );
 
-		} //is_singular
+		}
 
-	} //function cookie
+	}
 
 
 
@@ -171,7 +172,10 @@ class WP_CSLV
 	{
 		// Get time for comment
 		$comment_time = strtotime( get_comment_date( 'Y-m-d G:i:s' ) );
-		$latest_visit = json_decode( stripslashes( $_COOKIE['last_visit']), true );
+
+		if ( isset( $_COOKIE['last_visit'] ) ) {
+			$latest_visit = json_decode( stripslashes( $_COOKIE['last_visit']), true );
+		}
 
 		// Add new-comment class if the comment was posted since user's last visit
 		if ( $comment_time > $latest_visit[get_the_ID()] )
@@ -188,7 +192,6 @@ class WP_CSLV
 	 * Inlines to eliminate a return trip.
 	 *
 	 * @since 1.0
-	 * @uses wp_enqueue_scripts
 	 */
 	function styles()
 	{
@@ -196,4 +199,25 @@ class WP_CSLV
 		<style>.new-comment { background-color: #f0f8ff; }</style>
 		<?php
 	}
+
+
+
+	/**
+	 * Prevents the plugin from being updated from the WP public repo.
+	 *
+	 * In case someone adds a plugin to the wordpress.org repo with the same name.
+	 *
+	 * @since 1.0.1
+	 */
+	function prevent_public_updates( $r, $url )
+	{
+		if ( 0 === strpos( $url, 'https://api.wordpress.org/plugins/update-check/1.1/' ) )
+		{
+			$plugins = json_decode( $r['body']['plugins'], true );
+			unset( $plugins['plugins'][plugin_basename( __FILE__ )] );
+			$r['body']['plugins'] = json_encode( $plugins );
+		}
+		return $r;
+	}
+
 } //class
