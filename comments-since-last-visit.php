@@ -153,7 +153,7 @@ class WP_CSLV
 
 			// Save the time of the visit on this post in a cookie for 90 days
 			$latest_visit[$id] = $current_time;
-			setcookie( 'last_visit', json_encode( $latest_visit ), time()+3600*2160 );
+			setcookie( 'last_visit', json_encode( $latest_visit ), time()+3600*2160, COOKIEPATH );
 
 		}
 
